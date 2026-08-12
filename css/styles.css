@@ -446,15 +446,25 @@ canvas {
     max-height: 100% !important;
 }
 
-.chart-container-donut {
+/* Main debt chart container */
+.chart-main-container {
     position: relative;
-    height: 220px;
+    height: 320px;
+    width: 100%;
+}
+
+/* Donut chart containers */
+.donut-chart-container {
+    position: relative;
+    height: 210px;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
 }
+
+
 
 .kpi-title {
     color: var(--text-secondary);
@@ -1060,24 +1070,42 @@ input.input-error {
    MOBILE RESPONSIVE — breakpoint 768px
    ============================================================ */
 @media (max-width: 768px) {
+
+    /* CRITICAL: Prevent any element wider than screen causing zoom-out */
+    html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+    }
+
     body {
         padding: 10px 10px 80px 10px;
+        width: 100%;
+    }
+
+    /* --- Charts: reduced height on mobile --- */
+    .chart-main-container {
+        height: 220px !important;
+    }
+
+    .donut-chart-container {
+        height: 180px !important;
     }
 
     /* --- Header --- */
     header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 10px;
         margin-bottom: 14px;
     }
 
     .brand h1 {
-        font-size: 18px;
+        font-size: 17px;
+        line-height: 1.3;
     }
 
     .brand h1 .badge {
-        display: none; /* скрываем длинный бейдж v3.0 на мобиле */
+        display: none;
     }
 
     .brand p {
@@ -1087,40 +1115,47 @@ input.input-error {
     .header-btns {
         width: 100%;
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 6px;
     }
 
     .header-btns .btn {
-        font-size: 11px;
-        padding: 9px 4px;
+        font-size: 12px;
+        padding: 10px 4px;
         justify-content: center;
-        min-height: 40px;
+        min-height: 42px;
         text-align: center;
+        white-space: nowrap;
     }
 
-    /* Дата-кнопка во всю строку */
     .header-btns .btn:first-child {
         grid-column: 1 / -1;
         font-size: 13px;
-        padding: 10px;
     }
 
-    /* --- Tabs --- */
+    /* --- Tabs: horizontal scroll --- */
     .tabs-nav {
-        gap: 4px;
+        gap: 6px;
         padding-bottom: 8px;
         margin-bottom: 14px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        flex-wrap: nowrap;
     }
+
+    .tabs-nav::-webkit-scrollbar { display: none; }
 
     .tab-btn {
         font-size: 12px;
-        padding: 8px 12px;
+        padding: 9px 12px;
         white-space: nowrap;
         min-height: 40px;
+        flex-shrink: 0;
     }
 
-    /* --- KPI grid --- */
+    /* --- KPI Grid --- */
     .grid-kpi {
         grid-template-columns: 1fr 1fr;
         gap: 10px;
@@ -1128,63 +1163,91 @@ input.input-error {
     }
 
     .card {
-        padding: 14px 12px;
+        padding: 12px 10px;
     }
 
     .kpi-value {
-        font-size: 18px;
+        font-size: 17px;
     }
 
     .kpi-title {
         font-size: 10px;
+        line-height: 1.3;
     }
 
     .kpi-sub {
-        font-size: 11px;
+        font-size: 10px;
+        line-height: 1.3;
     }
 
-    /* --- Main / equal grids --- */
+    /* CRITICAL: Main grids always 1 col */
     .grid-main,
     .grid-equal {
         grid-template-columns: 1fr !important;
         gap: 12px;
     }
 
-    /* --- Strategy selector --- */
-    .strategy-selector {
-        flex-wrap: wrap;
-        gap: 4px;
+    /* --- Card header: stack --- */
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
     }
+
+    /* --- Strategy selectors: horizontal scroll --- */
+    .strategy-selector {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 4px;
+        max-width: 100%;
+    }
+
+    .strategy-selector::-webkit-scrollbar { display: none; }
 
     .strategy-btn {
         font-size: 11px;
         padding: 6px 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-height: 34px;
     }
 
     /* --- Chart analytics bar --- */
     .chart-analytics-bar {
-        gap: 8px;
+        gap: 6px;
+        flex-wrap: wrap;
     }
 
     .metric-chip {
-        padding: 8px 10px;
-        font-size: 11px;
+        padding: 7px 10px;
+        font-size: 10px;
+        flex: 1 1 auto;
     }
 
     /* --- Tables --- */
     .table-responsive {
+        overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        width: 100%;
     }
 
     .table-custom {
         font-size: 11px;
-        min-width: 420px; /* принудительная прокрутка вместо переносов */
+        min-width: 480px;
     }
 
     .table-custom th,
     .table-custom td {
         padding: 8px 5px;
         white-space: nowrap;
+    }
+
+    .table-section-divider td {
+        white-space: normal !important;
+        font-size: 11px !important;
     }
 
     /* --- Month detail cards --- */
@@ -1197,21 +1260,42 @@ input.input-error {
     }
 
     .month-stats-row {
-        font-size: 11px;
-        gap: 6px;
+        font-size: 10px;
+        gap: 5px;
+        flex-wrap: wrap;
     }
 
-    /* --- Daily step items --- */
+    .month-header-row {
+        flex-wrap: wrap;
+    }
+
+    /* --- Daily step items: vertical --- */
     .daily-step-item {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 6px;
         padding: 10px;
     }
 
+    .daily-step-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
     .daily-step-right {
-        width: 100%;
+        display: flex;
         justify-content: space-between;
+        align-items: center;
+        padding-top: 4px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .step-metrics-box {
+        border-left: none;
+        padding-left: 0;
+        flex-direction: row;
+        gap: 12px;
     }
 
     /* --- Debt metrics grid --- */
@@ -1226,17 +1310,18 @@ input.input-error {
 
     /* --- Modals --- */
     .modal {
-        width: 96%;
+        width: 96vw !important;
+        max-width: 96vw !important;
         padding: 16px 14px;
         border-radius: 14px;
-        max-height: 90vh;
+        max-height: 88vh;
         overflow-y: auto;
+        margin: 0;
     }
 
-    /* --- Touch-friendly: all buttons min 44px --- */
+    /* --- Touch targets --- */
     .btn,
     .tab-btn,
-    .strategy-btn,
     .preset-chip,
     .schedule-type-btn {
         min-height: 40px;
@@ -1245,45 +1330,92 @@ input.input-error {
     /* --- Presets bar --- */
     .presets-bar {
         gap: 6px;
+        flex-wrap: wrap;
     }
 
     .preset-chip {
-        padding: 6px 10px;
+        padding: 7px 10px;
         font-size: 11px;
-        min-height: 36px;
+        white-space: nowrap;
     }
 
-    /* --- Chart container --- */
-    canvas {
-        touch-action: pan-y;
+    /* --- Income stats --- */
+    .income-stats-summary {
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
-    /* --- Goal items --- */
+    .stat-pill {
+        font-size: 11px;
+        padding: 6px 10px;
+        flex: 1 1 auto;
+    }
+
+    /* --- Goals --- */
     .goal-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
     }
-}
 
-/* extra small — 480px */
-@media (max-width: 480px) {
-    .header-btns {
-        grid-template-columns: repeat(3, 1fr);
+    /* --- Action buttons --- */
+    .action-btns-group {
+        gap: 6px;
     }
 
-    .grid-kpi {
-        grid-template-columns: 1fr 1fr;
+    .action-btn-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+    }
+
+    /* --- Card title --- */
+    .card-title {
+        font-size: 14px;
+        line-height: 1.3;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* --- Alerts --- */
+    .alert-banner {
+        font-size: 12px;
+        padding: 10px 12px;
+    }
+
+    /* --- Horizon/chart buttons: compact --- */
+    .horizon-btn {
+        padding: 5px 8px !important;
+        font-size: 10px !important;
+    }
+
+    canvas {
+        touch-action: pan-y;
+    }
+}
+
+/* ============================================================
+   EXTRA SMALL — 480px
+   ============================================================ */
+@media (max-width: 480px) {
+    .header-btns {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .kpi-value {
+        font-size: 15px;
     }
 
     .debt-metrics-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
 
-    .chart-analytics-bar {
-        flex-direction: column;
+    .tab-btn {
+        font-size: 11px;
+        padding: 8px 10px;
     }
 }
+
 
 /* ============================================================
    PIN LOCK SCREEN

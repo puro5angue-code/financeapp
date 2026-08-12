@@ -151,7 +151,7 @@
                             </div>
                         </div>
                     </div>
-                    <div style="position: relative; height: 320px; width: 100%;">
+                    <div class="chart-main-container" style="position: relative; width: 100%;">
                         <canvas id="debtChart"></canvas>
                     </div>
                 </div>
@@ -160,7 +160,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">📊 Что будет если...</div>
-                        <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <label style="font-size:12px; color:var(--text-secondary);">Доп. платёж:</label>
                             <input type="number" id="whatIfExtra" value="5000" min="0" step="1000"
                                 style="width:90px; padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary); font-size:12px;"
@@ -204,10 +204,10 @@
                             <button class="strategy-btn donut-toggle-btn" data-donut="ratio" onclick="setDonutViewMode('ratio')">🍩 Доходы/Расходы</button>
                         </div>
                     </div>
-                    <div id="donutCategoriesContainer" style="position: relative; height: 210px; width: 100%;">
+                    <div id="donutCategoriesContainer" class="donut-chart-container" style="width: 100%;">
                         <canvas id="expenseCategoriesChart"></canvas>
                     </div>
-                    <div id="donutRatioContainer" style="position: relative; height: 210px; width: 100%; display: none;">
+                    <div id="donutRatioContainer" class="donut-chart-container" style="width: 100%; display: none;">
                         <canvas id="structureChart"></canvas>
                     </div>
                 </div>
