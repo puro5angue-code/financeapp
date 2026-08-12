@@ -7,21 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Finance OS — Интерактивная Финансовая Система</title>
-    <script>
-        // Force unregister stale Service Workers to prevent browser cache lock
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-            if (window.caches) {
-                caches.keys().then(function(names) {
-                    for (let name of names) caches.delete(name);
-                });
-            }
-        }
-    </script>
+
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%2310b981'>💳</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -29,6 +15,40 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+    <!-- ============ PIN LOCK SCREEN ============ -->
+    <div id="pinLockOverlay">
+        <div class="pin-logo">💳</div>
+        <div class="pin-title">Finance OS</div>
+        <div class="pin-subtitle" id="pinSubtitle">Введите PIN-код для входа</div>
+
+        <div class="pin-dots" id="pinDots">
+            <div class="pin-dot" id="dot0"></div>
+            <div class="pin-dot" id="dot1"></div>
+            <div class="pin-dot" id="dot2"></div>
+            <div class="pin-dot" id="dot3"></div>
+        </div>
+
+        <div class="pin-keypad">
+            <button class="pin-key" onclick="pinPress('1')">1</button>
+            <button class="pin-key" onclick="pinPress('2')">2</button>
+            <button class="pin-key" onclick="pinPress('3')">3</button>
+            <button class="pin-key" onclick="pinPress('4')">4</button>
+            <button class="pin-key" onclick="pinPress('5')">5</button>
+            <button class="pin-key" onclick="pinPress('6')">6</button>
+            <button class="pin-key" onclick="pinPress('7')">7</button>
+            <button class="pin-key" onclick="pinPress('8')">8</button>
+            <button class="pin-key" onclick="pinPress('9')">9</button>
+            <button class="pin-key pin-zero" onclick="pinPress('0')">0</button>
+            <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
+        </div>
+
+        <div class="pin-status" id="pinStatus"></div>
+        <div class="pin-lockout" id="pinLockout">🔒 Слишком много попыток. Подождите <span id="lockoutTimer">30</span> сек.</div>
+        <div class="pin-reset-link" id="pinResetLink" onclick="pinReset()" style="display:none;">Забыли PIN? Сбросить</div>
+    </div>
+    <!-- ============ END PIN LOCK SCREEN ============ -->
+
 
     <header>
         <div class="brand">
@@ -800,6 +820,211 @@
                     .catch(err => console.warn('[Finance OS] Ошибка регистрации SW:', err));
             });
         }
+    </script>
+
+    <!-- ============ PIN LOGIC ============ -->
+    <script>
+    (function() {
+        const STORAGE_KEY   = 'finOS_pinHash';
+        const FAIL_KEY      = 'finOS_pinFails';
+        const LOCKOUT_KEY   = 'finOS_pinLockout';
+        const SESSION_KEY   = 'finOS_pinSession';
+        const LOCKOUT_SECS  = 30;
+        const MAX_FAILS     = 3;
+        const PIN_LENGTH    = 4;
+
+        let currentInput = '';
+        let isSetupMode  = false;
+        let setupFirst   = '';
+
+        /* --- SHA-256 helper (Web Crypto API) --- */
+        async function sha256(str) {
+            const buf = await crypto.subtle.digest(
+                'SHA-256',
+                new TextEncoder().encode(str)
+            );
+            return Array.from(new Uint8Array(buf))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        /* --- DOM refs --- */
+        const overlay    = document.getElementById('pinLockOverlay');
+        const subtitle   = document.getElementById('pinSubtitle');
+        const statusEl   = document.getElementById('pinStatus');
+        const lockoutEl  = document.getElementById('pinLockout');
+        const lockoutTmr = document.getElementById('lockoutTimer');
+        const resetLink  = document.getElementById('pinResetLink');
+        const dots       = [0,1,2,3].map(i => document.getElementById('dot' + i));
+
+        function updateDots(len, state) {
+            dots.forEach((d, i) => {
+                d.className = 'pin-dot';
+                if (i < len) d.classList.add(state === 'error' ? 'error' : 'filled');
+            });
+        }
+
+        function setStatus(msg, type) {
+            statusEl.textContent  = msg;
+            statusEl.className    = 'pin-status' + (type ? ' ' + type : '');
+        }
+
+        /* --- Check lockout --- */
+        function isLockedOut() {
+            const until = parseInt(localStorage.getItem(LOCKOUT_KEY) || '0');
+            return Date.now() < until;
+        }
+
+        function startLockout() {
+            const until = Date.now() + LOCKOUT_SECS * 1000;
+            localStorage.setItem(LOCKOUT_KEY, until);
+            localStorage.setItem(FAIL_KEY, '0');
+            showLockout();
+        }
+
+        function showLockout() {
+            lockoutEl.classList.add('visible');
+            const tick = setInterval(() => {
+                const rem = Math.ceil((parseInt(localStorage.getItem(LOCKOUT_KEY)) - Date.now()) / 1000);
+                if (rem <= 0) {
+                    clearInterval(tick);
+                    lockoutEl.classList.remove('visible');
+                    setStatus('');
+                    currentInput = '';
+                    updateDots(0);
+                } else {
+                    lockoutTmr.textContent = rem;
+                }
+            }, 500);
+        }
+
+        /* --- Session (tab stays unlocked until close) --- */
+        function unlockApp() {
+            sessionStorage.setItem(SESSION_KEY, '1');
+            overlay.classList.add('hidden');
+        }
+
+        /* --- Init --- */
+        async function init() {
+            // Already unlocked this tab session?
+            if (sessionStorage.getItem(SESSION_KEY)) {
+                overlay.classList.add('hidden');
+                return;
+            }
+
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) {
+                // First run — setup mode
+                isSetupMode = true;
+                subtitle.textContent = 'Создайте PIN-код (4 цифры)';
+                resetLink.style.display = 'none';
+            } else {
+                subtitle.textContent = 'Введите PIN-код для входа';
+                resetLink.style.display = 'block';
+                if (isLockedOut()) showLockout();
+            }
+        }
+
+        /* --- Key press --- */
+        window.pinPress = async function(digit) {
+            if (isLockedOut()) return;
+            if (currentInput.length >= PIN_LENGTH) return;
+
+            currentInput += digit;
+            updateDots(currentInput.length);
+            setStatus('');
+
+            if (currentInput.length === PIN_LENGTH) {
+                await handleComplete();
+            }
+        };
+
+        window.pinDel = function() {
+            if (isLockedOut()) return;
+            currentInput = currentInput.slice(0, -1);
+            updateDots(currentInput.length);
+            setStatus('');
+        };
+
+        async function handleComplete() {
+            const hash = await sha256(currentInput);
+
+            if (isSetupMode) {
+                if (!setupFirst) {
+                    // First entry
+                    setupFirst = hash;
+                    currentInput = '';
+                    updateDots(0);
+                    subtitle.textContent = 'Повторите PIN-код';
+                    setStatus('Введите PIN ещё раз для подтверждения');
+                } else {
+                    // Confirm
+                    if (hash === setupFirst) {
+                        localStorage.setItem(STORAGE_KEY, hash);
+                        setStatus('PIN создан! Добро пожаловать 🎉', 'success');
+                        setTimeout(unlockApp, 700);
+                    } else {
+                        setupFirst = '';
+                        currentInput = '';
+                        updateDots(0, 'error');
+                        subtitle.textContent = 'Создайте PIN-код (4 цифры)';
+                        setStatus('PIN не совпадает. Попробуйте снова', 'error');
+                    }
+                }
+            } else {
+                // Verify mode
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (hash === stored) {
+                    localStorage.setItem(FAIL_KEY, '0');
+                    setStatus('Добро пожаловать! ✓', 'success');
+                    setTimeout(unlockApp, 500);
+                } else {
+                    currentInput = '';
+                    updateDots(4, 'error');
+                    const fails = parseInt(localStorage.getItem(FAIL_KEY) || '0') + 1;
+                    localStorage.setItem(FAIL_KEY, fails);
+                    if (fails >= MAX_FAILS) {
+                        startLockout();
+                        setStatus('Заблокировано', 'error');
+                    } else {
+                        setStatus(`Неверный PIN. Осталось попыток: ${MAX_FAILS - fails}`, 'error');
+                        setTimeout(() => { updateDots(0); currentInput = ''; setStatus(''); }, 600);
+                    }
+                }
+            }
+        }
+
+        /* --- Reset PIN --- */
+        window.pinReset = function() {
+            const confirm1 = prompt('Введите текущий PIN для сброса:');
+            if (confirm1 === null) return;
+            sha256(confirm1).then(h => {
+                if (h === localStorage.getItem(STORAGE_KEY)) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem(FAIL_KEY);
+                    localStorage.removeItem(LOCKOUT_KEY);
+                    sessionStorage.removeItem(SESSION_KEY);
+                    isSetupMode = true;
+                    setupFirst  = '';
+                    currentInput = '';
+                    updateDots(0);
+                    subtitle.textContent = 'Создайте новый PIN-код';
+                    setStatus('PIN сброшен. Создайте новый.');
+                    resetLink.style.display = 'none';
+                } else {
+                    setStatus('Неверный текущий PIN', 'error');
+                }
+            });
+        };
+
+        /* --- Keyboard support --- */
+        document.addEventListener('keydown', e => {
+            if (overlay.classList.contains('hidden')) return;
+            if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+            if (e.key === 'Backspace') pinDel();
+        });
+
+        init();
+    })();
     </script>
 </body>
 </html>

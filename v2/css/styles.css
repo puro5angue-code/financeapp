@@ -1055,3 +1055,417 @@ input.input-error {
     --border: rgba(255, 255, 255, 0.1);
     --bg-secondary: #1e293b;
 }
+
+/* ============================================================
+   MOBILE RESPONSIVE — breakpoint 768px
+   ============================================================ */
+@media (max-width: 768px) {
+    body {
+        padding: 10px 10px 80px 10px;
+    }
+
+    /* --- Header --- */
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .brand h1 {
+        font-size: 18px;
+    }
+
+    .brand h1 .badge {
+        display: none; /* скрываем длинный бейдж v3.0 на мобиле */
+    }
+
+    .brand p {
+        font-size: 11px;
+    }
+
+    .header-btns {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+
+    .header-btns .btn {
+        font-size: 11px;
+        padding: 9px 4px;
+        justify-content: center;
+        min-height: 40px;
+        text-align: center;
+    }
+
+    /* Дата-кнопка во всю строку */
+    .header-btns .btn:first-child {
+        grid-column: 1 / -1;
+        font-size: 13px;
+        padding: 10px;
+    }
+
+    /* --- Tabs --- */
+    .tabs-nav {
+        gap: 4px;
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+    }
+
+    .tab-btn {
+        font-size: 12px;
+        padding: 8px 12px;
+        white-space: nowrap;
+        min-height: 40px;
+    }
+
+    /* --- KPI grid --- */
+    .grid-kpi {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .card {
+        padding: 14px 12px;
+    }
+
+    .kpi-value {
+        font-size: 18px;
+    }
+
+    .kpi-title {
+        font-size: 10px;
+    }
+
+    .kpi-sub {
+        font-size: 11px;
+    }
+
+    /* --- Main / equal grids --- */
+    .grid-main,
+    .grid-equal {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    /* --- Strategy selector --- */
+    .strategy-selector {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .strategy-btn {
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+
+    /* --- Chart analytics bar --- */
+    .chart-analytics-bar {
+        gap: 8px;
+    }
+
+    .metric-chip {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    /* --- Tables --- */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-custom {
+        font-size: 11px;
+        min-width: 420px; /* принудительная прокрутка вместо переносов */
+    }
+
+    .table-custom th,
+    .table-custom td {
+        padding: 8px 5px;
+        white-space: nowrap;
+    }
+
+    /* --- Month detail cards --- */
+    .month-detail-card {
+        padding: 12px 10px;
+    }
+
+    .month-name {
+        font-size: 15px;
+    }
+
+    .month-stats-row {
+        font-size: 11px;
+        gap: 6px;
+    }
+
+    /* --- Daily step items --- */
+    .daily-step-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 10px;
+    }
+
+    .daily-step-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* --- Debt metrics grid --- */
+    .debt-metrics-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .debt-metric-val {
+        font-size: 15px;
+    }
+
+    /* --- Modals --- */
+    .modal {
+        width: 96%;
+        padding: 16px 14px;
+        border-radius: 14px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* --- Touch-friendly: all buttons min 44px --- */
+    .btn,
+    .tab-btn,
+    .strategy-btn,
+    .preset-chip,
+    .schedule-type-btn {
+        min-height: 40px;
+    }
+
+    /* --- Presets bar --- */
+    .presets-bar {
+        gap: 6px;
+    }
+
+    .preset-chip {
+        padding: 6px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    /* --- Chart container --- */
+    canvas {
+        touch-action: pan-y;
+    }
+
+    /* --- Goal items --- */
+    .goal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+}
+
+/* extra small — 480px */
+@media (max-width: 480px) {
+    .header-btns {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-kpi {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .debt-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-analytics-bar {
+        flex-direction: column;
+    }
+}
+
+/* ============================================================
+   PIN LOCK SCREEN
+   ============================================================ */
+#pinLockOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #0b0f17;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#pinLockOverlay.hidden {
+    display: none;
+}
+
+.pin-logo {
+    font-size: 48px;
+    margin-bottom: 12px;
+    animation: pinPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pinPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+.pin-title {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #3b82f6, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.pin-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 32px;
+    text-align: center;
+}
+
+/* Dots */
+.pin-dots {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #334155;
+    background: transparent;
+    transition: all 0.15s ease;
+}
+
+.pin-dot.filled {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+
+.pin-dot.error {
+    background: #ef4444;
+    border-color: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+    animation: pinShake 0.35s ease;
+}
+
+@keyframes pinShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* Keypad */
+.pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    max-width: 280px;
+    width: 100%;
+    margin-bottom: 24px;
+}
+
+.pin-key {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f8fafc;
+    font-size: 22px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.pin-key:active,
+.pin-key.pressed {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #3b82f6;
+    transform: scale(0.92);
+}
+
+.pin-key.pin-zero {
+    grid-column: 2;
+}
+
+.pin-key.pin-del {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    font-size: 18px;
+}
+
+.pin-key.pin-del:active {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Status message */
+.pin-status {
+    font-size: 13px;
+    color: #64748b;
+    text-align: center;
+    min-height: 20px;
+    transition: color 0.2s;
+}
+
+.pin-status.error {
+    color: #ef4444;
+}
+
+.pin-status.success {
+    color: #22c55e;
+}
+
+/* Forgot PIN link */
+.pin-reset-link {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #475569;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.2s;
+}
+
+.pin-reset-link:hover {
+    color: #94a3b8;
+}
+
+/* Lockout overlay */
+.pin-lockout {
+    margin-top: 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: #ef4444;
+    text-align: center;
+    display: none;
+}
+
+.pin-lockout.visible {
+    display: block;
+}
+
