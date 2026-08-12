@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Finance OS — Интерактивная Финансовая Система</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%2310b981'>💳</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <h1>Finance OS — Интерактивная Система</h1>
+            <p>Управление доходами, расходами, долгами и целями с точным автоперерасчетом</p>
+        </div>
+        <div class="header-btns">
+            <button class="btn btn-secondary" onclick="openStartDateModal()" title="Указать текущую дату отсчёта">📅 <span id="startDateHeaderBtnText">05.08.2026</span></button>
+            <button class="btn btn-primary" onclick="openModal('incomeModal')">+ Доход</button>
+            <button class="btn btn-secondary" onclick="openModal('expenseModal')">+ Расход</button>
+            <button class="btn btn-danger" onclick="openDebtModal()">+ Долг</button>
+            <button class="btn btn-secondary" onclick="printReport()">🖨️ Отчёт</button>
+            <button class="btn btn-secondary" onclick="exportJSON()">💾 Экспорт</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFileInput').click()">📂 Импорт</button>
+            <input type="file" id="importFileInput" style="display:none;" accept=".json" onchange="importJSON(event)">
+            <button class="btn btn-secondary" onclick="resetToDefault()">🔄 Сброс</button>
+        </div>
+    </header>
+
+    <!-- Alert for Negative FCF / Deficit -->
+    <div id="deficitAlert" class="alert-banner" style="display: none;">
+        <span>⚠️ <b>Предупреждение о дефиците:</b> Ваши базовые расходы превышают доходы! Свободный денежный поток (FCF) отрицательный, долги будут расти за счет процентов.</span>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('dashboardTab', this)">📊 Главный Дашборд</button>
+        <button class="tab-btn" onclick="switchTab('scheduleTab', this)">🗓️ Помесячный План Выплат</button>
+        <button class="tab-btn" onclick="switchTab('incomeExpenseTab', this)">💰 Доходы и Расходы</button>
+        <button class="tab-btn" onclick="switchTab('debtsTab', this)">🚨 Долги и Стратегия</button>
+        <button class="tab-btn" onclick="switchTab('calendarTab', this)">📅 Хроника Событий</button>
+    </div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <div id="dashboardTab" class="tab-content active">
+        <!-- KPI Cards -->
+        <div class="grid-kpi">
+            <div class="card" style="cursor: pointer;" onclick="updateCashBalance()" title="Нажмите, чтобы изменить остаток наличных">
+                <div class="kpi-title">Наличные средства ✏️</div>
+                <div class="kpi-value val-blue" id="kpiCash">8 000 ₽</div>
+                <div class="kpi-sub">Нажмите для изменения</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">🛡️ Запас прочности</div>
+                <div class="kpi-value val-orange" id="kpiRunway">0.2 мес.</div>
+                <div class="kpi-sub" id="kpiRunwaySub">Подушка на расходы</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Ежемесячный Доход</div>
+                <div class="kpi-value val-green" id="kpiIncome">85 253 ₽</div>
+                <div class="kpi-sub" id="kpiIncomeSub">Загрузка...</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Базовые Расходы</div>
+                <div class="kpi-value val-red" id="kpiExpense">40 500 ₽</div>
+                <div class="kpi-sub">ЖКХ, Продукты, Аренда и др.</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Свободный Поток (FCF)</div>
+                <div class="kpi-value val-green" id="kpiFCF">44 753 ₽</div>
+                <div class="kpi-sub">На гашение / накопления</div>
+            </div>
+            <div class="card">
+                <div class="kpi-title">Совокупный Долг</div>
+                <div class="kpi-value val-red" id="kpiDebt">230 813 ₽</div>
+                <div class="kpi-sub" id="kpiFreedomDate">Свобода: —</div>
+            </div>
+        </div>
+
+        <div class="grid-main">
+            <!-- Left: Debt Chart & Summary -->
+            <div style="display:flex; flex-direction:column; gap:18px;">
+                <div class="card">
+                    <!-- Chart Analytics Bar -->
+                    <div class="chart-analytics-bar" id="chartAnalyticsBar"></div>
+
+                    <div class="card-header">
+                        <div class="card-title">📉 График погашения и накоплений</div>
+                        <!-- Mode & Strategy Selectors -->
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <div class="strategy-selector" title="Режим отображения графика">
+                                <button class="strategy-btn chart-mode-btn active" data-mode="breakdown" onclick="setChartViewMode('breakdown')">📉 По картам и целям</button>
+                                <button class="strategy-btn chart-mode-btn" data-mode="comparison" onclick="setChartViewMode('comparison')">⚖️ Сравнение</button>
+                                <button class="strategy-btn chart-mode-btn" data-mode="interest" onclick="setChartViewMode('interest')">💸 Проценты</button>
+                            </div>
+                            <div class="strategy-selector" title="Стратегия погашения">
+                                <button class="strategy-btn active" data-strategy="avalanche" onclick="setStrategy('avalanche')">⛰️ Лавина</button>
+                                <button class="strategy-btn" data-strategy="snowball" onclick="setStrategy('snowball')">☃️ Снежный ком</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="position: relative; height: 320px; width: 100%;">
+                        <canvas id="debtChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">🗓️ Помесячный план выплат (Краткий обзор)</div>
+                        <button class="btn btn-secondary btn-sm" onclick="switchTab('scheduleTab', document.querySelectorAll('.tab-btn')[1])">Открыть полный план ➔</button>
+                    </div>
+                    <div class="table-responsive" style="max-height: 260px;">
+                        <table class="table-custom">
+                            <thead>
+                                <tr>
+                                    <th>Месяц</th>
+                                    <th>Выплата</th>
+                                    <th>Распределение (Мин. платежи + Досрочка)</th>
+                                    <th>Остаток долгов</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simTableBody">
+                                <!-- Dynamic summary content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Donut Chart & Accumulation Goals -->
+            <div style="display:flex; flex-direction:column; gap:18px;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📊 Структура расходов и потоков</div>
+                        <div class="strategy-selector" title="Режим круговой диаграммы">
+                            <button class="strategy-btn donut-toggle-btn active" data-donut="categories" onclick="setDonutViewMode('categories')">📊 Категории</button>
+                            <button class="strategy-btn donut-toggle-btn" data-donut="ratio" onclick="setDonutViewMode('ratio')">🍩 Доходы/Расходы</button>
+                        </div>
+                    </div>
+                    <div id="donutCategoriesContainer" style="position: relative; height: 210px; width: 100%;">
+                        <canvas id="expenseCategoriesChart"></canvas>
+                    </div>
+                    <div id="donutRatioContainer" style="position: relative; height: 210px; width: 100%; display: none;">
+                        <canvas id="structureChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">🎯 Накопления после обнуления долгов</div>
+                        <button class="btn btn-primary btn-sm" onclick="openModal('goalModal')">+ Цель</button>
+                    </div>
+                    <!-- Dynamic Savings Goals List -->
+                    <div id="savingsGoalsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: DEDICATED FULL MONTHLY SCHEDULE TAB -->
+    <div id="scheduleTab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🗓️ Детализированный помесячный план выплат по дням (24 месяца)</div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn btn-secondary btn-sm" onclick="expandAllMonthCards()">📖 Развернуть все</button>
+                        <button class="btn btn-secondary btn-sm" onclick="collapseAllMonthCards()">📂 Свернуть все</button>
+                        <button class="btn btn-secondary btn-sm" onclick="expandCurrentMonthCard()">🎯 Только текущий</button>
+                    </div>
+                    <div class="strategy-selector">
+                        <button class="strategy-btn schedule-type-view-btn active" data-view="cards" onclick="setScheduleViewType('cards')">📋 Пошаговый календарь</button>
+                        <button class="strategy-btn schedule-type-view-btn" data-view="table" onclick="setScheduleViewType('table')">📊 Сводная таблица</button>
+                    </div>
+                    <div class="strategy-selector">
+                        <button class="strategy-btn schedule-filter-btn active" data-filter="all" onclick="setScheduleFilter('all')">Все 24 месяца</button>
+                        <button class="strategy-btn schedule-filter-btn" data-filter="debts" onclick="setScheduleFilter('debts')">🔥 Только фаза долгов</button>
+                        <button class="strategy-btn schedule-filter-btn" data-filter="savings" onclick="setScheduleFilter('savings')">🛡️ Только фаза накоплений</button>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+                Пошаговый реестр зачислений доходов, списания базовых расходов, выплат минимальных платежей и досрочных гашений с привязкой к дням каждого месяца и колонкой «Остаток долгов на момент операции».
+            </p>
+
+            <!-- Mode 1: Step-by-Step Daily Action Cards -->
+            <div id="scheduleCardsContainer">
+                <!-- Dynamic Month Detail Cards -->
+            </div>
+
+            <!-- Mode 2: Detailed Overview Grid Table -->
+            <div id="scheduleTableContainer" class="table-responsive" style="display:none;">
+                <table class="table-custom" style="font-size:12px;">
+                    <thead>
+                        <tr id="scheduleTabHeaderRow">
+                            <!-- Dynamic Columns -->
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleTabTableBody">
+                        <!-- Dynamic Detailed Timeline Content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: EDIT INCOME & EXPENSES -->
+    <div id="incomeExpenseTab" class="tab-content">
+        <div class="grid-main grid-equal">
+            <!-- Incomes Table -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">💰 Источники Доходов (Регулярные и Непостоянные)</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('incomeModal')">+ Добавить</button>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="presets-bar">
+                    <span class="presets-label">⚡ Быстрый шаблон:</span>
+                    <button class="preset-chip" onclick="addIncomePreset('salary')">💼 + Оклад & Аванс</button>
+                    <button class="preset-chip" onclick="addIncomePreset('vacation')">🌴 + Отпускные (Разово)</button>
+                    <button class="preset-chip" onclick="addIncomePreset('bonus')">🎁 + Премия</button>
+                    <button class="preset-chip" onclick="addIncomePreset('freelance')">💻 + Фриланс</button>
+                    <button class="preset-chip" onclick="addIncomePreset('passive')">📈 + Пассивный</button>
+                </div>
+
+                <!-- Income Summary Bar -->
+                <div class="income-stats-summary" id="incomeStatsSummary"></div>
+
+                <div class="table-responsive">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; text-align: center;">Вкл</th>
+                                <th>Наименование & Режим</th>
+                                <th>Категория</th>
+                                <th>Сумма (₽)</th>
+                                <th>Дни и структура выплат</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Expenses Table -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🛒 Базовые Ежемесячные Расходы (Детализация)</div>
+                    <button class="btn btn-secondary btn-sm" onclick="openModal('expenseModal')">+ Добавить</button>
+                </div>
+
+                <!-- Quick Expense Presets -->
+                <div class="presets-bar">
+                    <span class="presets-label">⚡ Быстрый шаблон:</span>
+                    <button class="preset-chip" onclick="addExpensePreset('housing')">🏠 + ЖКХ</button>
+                    <button class="preset-chip" onclick="addExpensePreset('food')">🛒 + Продукты</button>
+                    <button class="preset-chip" onclick="addExpensePreset('transport')">🚗 + Транспорт</button>
+                    <button class="preset-chip" onclick="addExpensePreset('services')">📱 + Подписки</button>
+                </div>
+
+                <!-- Expense Summary Bar -->
+                <div class="income-stats-summary" id="expenseStatsSummary"></div>
+
+                <div class="table-responsive">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px; text-align: center;">Вкл</th>
+                                <th>Статья расхода</th>
+                                <th>Категория</th>
+                                <th>Сумма (₽)</th>
+                                <th>День списания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: EDIT DEBTS (PRO PORTFOLIO MANAGEMENT) -->
+    <div id="debtsTab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🚨 Управление Кредитным Портфелем и Стратегией Досрочки</div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div class="strategy-selector">
+                        <button class="strategy-btn active" data-strategy="avalanche" onclick="setStrategy('avalanche')">⛰️ Лавина (%)</button>
+                        <button class="strategy-btn" data-strategy="snowball" onclick="setStrategy('snowball')">☃️ Снежный ком (₽)</button>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="openDebtModal()">+ Новый долг</button>
+                </div>
+            </div>
+
+            <!-- Pro Debt Portfolio Metrics Grid -->
+            <div class="debt-metrics-grid" id="debtPortfolioMetricsBar"></div>
+
+            <!-- Quick Presets -->
+            <div class="presets-bar">
+                <span class="presets-label">⚡ Быстрый шаблон:</span>
+                <button class="preset-chip" onclick="addDebtPreset('sber')">💳 + Сбер Кредитка</button>
+                <button class="preset-chip" onclick="addDebtPreset('tinkoff')">💳 + Т-Банк Платинум</button>
+                <button class="preset-chip" onclick="addDebtPreset('alfa')">💳 + Альфа 365</button>
+                <button class="preset-chip" onclick="addDebtPreset('consumer')">🏦 + Потребкредит</button>
+            </div>
+
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+                Красным подсвечена <b>главная приоритетная цель досрочного погашения (#1 Target)</b>. Редактируйте параметры прямо в ячейках таблицы или кнопкой ✏️.
+            </p>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Обязательство & Тип</th>
+                            <th>Текущий Долг (₽)</th>
+                            <th>Кредитный Лимит</th>
+                            <th>Ставка & Проценты/мес</th>
+                            <th>Мин. Платеж (₽)</th>
+                            <th>Грейс & День оплаты</th>
+                            <th>Приоритет</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="debtsTableBody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: AUTOMATED CHRONOLOGICAL CALENDAR -->
+    <div id="calendarTab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📅 Хроника финансовых событий и остатков (Автогенерация)</div>
+                <div class="strategy-selector">
+                    <button class="strategy-btn calendar-filter-btn active" data-filter="all" onclick="setCalendarFilter('all')">Все события</button>
+                    <button class="strategy-btn calendar-filter-btn" data-filter="debts" onclick="setCalendarFilter('debts')">🔥 Выплаты долгов</button>
+                    <button class="strategy-btn calendar-filter-btn" data-filter="milestones" onclick="setCalendarFilter('milestones')">🎯 Накопления & Вехи</button>
+                    <button class="strategy-btn calendar-filter-btn" data-filter="incomes" onclick="setCalendarFilter('incomes')">💰 Доходы</button>
+                </div>
+            </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+                Автоматическая хронологическая лента с отдельным столбцом остатка долгов после каждой финансовой операции.
+            </p>
+            <div class="table-responsive">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Месяц и Срок</th>
+                            <th>Событие</th>
+                            <th>Сумма операции</th>
+                            <th>Остаток долга после операции</th>
+                            <th>Тип</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarTableBody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Income Modal -->
+    <div class="modal-overlay" id="incomeModal">
+        <div class="modal" style="max-width: 540px;">
+            <div class="card-header">
+                <div class="card-title">💰 Добавить источник дохода</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('incomeModal')">✕</button>
+            </div>
+            <form onsubmit="saveIncome(event)">
+                <div class="form-group">
+                    <label>Название источника</label>
+                    <input type="text" id="incName" required placeholder="Например: Отпускные или Налоговый вычет">
+                </div>
+                <div class="form-group">
+                    <label>Категория дохода</label>
+                    <select id="incCategory">
+                        <option value="salary">💼 Оклад / Зарплата</option>
+                        <option value="bonus">🎁 Премия / Бонус / Отпускные</option>
+                        <option value="freelance">💻 Фриланс / Подработка</option>
+                        <option value="passive">📈 Пассивный доход / Проценты</option>
+                        <option value="other" selected>💵 Прочее</option>
+                    </select>
+                </div>
+
+                <!-- Frequency Selector (Monthly vs One-Off) -->
+                <div class="form-group">
+                    <label>Периодичность зачисления</label>
+                    <div class="schedule-type-selector">
+                        <button type="button" class="schedule-type-btn freq-btn active" data-freq="monthly" onclick="setIncomeFrequency('monthly')">🔄 Каждый месяц</button>
+                        <button type="button" class="schedule-type-btn freq-btn" data-freq="one_off" onclick="setIncomeFrequency('one_off')">⚡ Разово в конкретном месяце</button>
+                    </div>
+                </div>
+
+                <!-- One-Off Target Month Dropdown -->
+                <div id="incOneOffMonthBox" class="form-group" style="display:none; background:rgba(168, 85, 247, 0.1); border:1px solid var(--accent-purple); padding:10px; border-radius:10px;">
+                    <label style="color:var(--accent-purple); font-weight:700;">Выберите месяц поступления средств:</label>
+                    <select id="incOneOffMonthSelect">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Schedule Type Pills -->
+                <div class="form-group">
+                    <label>График и выплата частей</label>
+                    <div class="schedule-type-selector">
+                        <button type="button" class="schedule-type-btn active" data-type="split" onclick="setIncomeScheduleType('split')">✌️ Аванс + Зарплата</button>
+                        <button type="button" class="schedule-type-btn" data-type="single" onclick="setIncomeScheduleType('single')">☝️ 1 раз в месяц</button>
+                        <button type="button" class="schedule-type-btn" data-type="flexible" onclick="setIncomeScheduleType('flexible')">🌊 Гибкий график</button>
+                    </div>
+                </div>
+
+                <!-- Option 1: Split (Advance + Salary) -->
+                <div id="incSplitDetailsBox" class="schedule-details-box">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div>
+                            <label style="font-size:11px; color:var(--accent-blue); font-weight:700;">1. День Аванса</label>
+                            <input type="text" id="incAdvanceDay" value="10-е число" placeholder="10-е число">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:var(--accent-blue); font-weight:700;">Сумма аванса (₽)</label>
+                            <input type="number" id="incAdvanceAmount" value="24126" placeholder="24126" oninput="updateIncomeTotalDisplay()">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:11px; color:var(--accent-green); font-weight:700;">2. Основной расчет</label>
+                            <input type="text" id="incMainDay" value="25-е число" placeholder="25-е число">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:var(--accent-green); font-weight:700;">Сумма расчета (₽)</label>
+                            <input type="number" id="incMainAmount" value="24127" placeholder="24127" oninput="updateIncomeTotalDisplay()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 2: Single Payout -->
+                <div id="incSingleDetailsBox" class="schedule-details-box" style="display:none;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:11px; color:var(--text-secondary);">День зачисления</label>
+                            <input type="text" id="incSingleDay" value="20-е число" placeholder="20-е число">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:var(--text-secondary);">Сумма в месяц (₽)</label>
+                            <input type="number" id="incSingleAmount" value="15000" placeholder="15000" oninput="updateIncomeTotalDisplay()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 3: Flexible Schedule -->
+                <div id="incFlexDetailsBox" class="schedule-details-box" style="display:none;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:11px; color:var(--text-secondary);">Примечание по дате</label>
+                            <input type="text" id="incFlexDay" value="В течение месяца" placeholder="В течение месяца">
+                        </div>
+                        <div>
+                            <label style="font-size:11px; color:var(--text-secondary);">Ожидаемая сумма (₽)</label>
+                            <input type="number" id="incFlexAmount" value="20000" placeholder="20000" oninput="updateIncomeTotalDisplay()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Preview Banner -->
+                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(34, 197, 94, 0.1); border:1px solid var(--accent-green); padding:10px 14px; border-radius:10px; margin-top:12px;">
+                    <span style="font-size:12px; font-weight:600;">Итого доходность зачисления:</span>
+                    <span id="incTotalPreview" class="val-green" style="font-size:16px; font-weight:700;">48 253 ₽</span>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('incomeModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить доход</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div class="modal-overlay" id="expenseModal">
+        <div class="modal" style="max-width: 540px;">
+            <div class="card-header">
+                <div class="card-title">🛒 Добавить статью расхода</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('expenseModal')">✕</button>
+            </div>
+            <form onsubmit="saveExpense(event)">
+                <div class="form-group">
+                    <label>Наименование расхода</label>
+                    <input type="text" id="expName" required placeholder="Например: Продукты или Страховка авто">
+                </div>
+                <div class="form-group">
+                    <label>Категория расхода</label>
+                    <select id="expCategory">
+                        <option value="housing">🏠 Жилье и ЖКХ</option>
+                        <option value="food" selected>🛒 Продукты и Еда</option>
+                        <option value="transport">🚗 Транспорт и Авто</option>
+                        <option value="services">📱 Связь и Подписки</option>
+                        <option value="health">💊 Здоровье и Аптека</option>
+                        <option value="life">👕 Быт и Покупки</option>
+                        <option value="hobby">🎈 Развлечения</option>
+                        <option value="other">📦 Прочее</option>
+                    </select>
+                </div>
+
+                <!-- Periodicity Selector (Monthly vs One-Off) -->
+                <div class="form-group">
+                    <label>Периодичность списания</label>
+                    <div class="schedule-type-selector">
+                        <button type="button" class="schedule-type-btn exp-freq-btn active" data-freq="monthly" onclick="setExpenseFrequency('monthly')">🔄 Каждый месяц</button>
+                        <button type="button" class="schedule-type-btn exp-freq-btn" data-freq="one_off" onclick="setExpenseFrequency('one_off')">⚡ Разово в конкретном месяце</button>
+                    </div>
+                </div>
+
+                <!-- One-Off Target Month Dropdown -->
+                <div id="expOneOffMonthBox" class="form-group" style="display:none; background:rgba(168, 85, 247, 0.1); border:1px solid var(--accent-purple); padding:10px; border-radius:10px;">
+                    <label style="color:var(--accent-purple); font-weight:700;">Выберите месяц списания средства:</label>
+                    <select id="expOneOffMonthSelect">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Сумма списания (₽)</label>
+                    <input type="number" id="expAmount" required min="0" placeholder="15000">
+                </div>
+                <div class="form-group">
+                    <label>День списания / Оплаты</label>
+                    <input type="text" id="expDay" value="15-е число" placeholder="Например: 15-е число или В течение месяца">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('expenseModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить расход</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Start Date Picker Modal -->
+    <div class="modal-overlay" id="startDateModal">
+        <div class="modal" style="max-width: 440px;">
+            <div class="card-header">
+                <div class="card-title">📅 Настройка текущей даты отсчёта</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('startDateModal')">✕</button>
+            </div>
+            <form onsubmit="saveStartDate(event)">
+                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+                    Укажите точную текущую дату. 24-месячный финансовый план и все списания будут выстроены от этого дня.
+                </p>
+                <div class="form-group">
+                    <label>Текущий день (число)</label>
+                    <input type="number" id="startDayInput" min="1" max="31" value="5" required>
+                </div>
+                <div class="form-group">
+                    <label>Текущий месяц и год начала плана</label>
+                    <select id="startMonthYearSelect">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('startDateModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Установить дату</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Debt Modal (Supports Dynamic Type-Based Adapters) -->
+    <div class="modal-overlay" id="debtModal">
+        <div class="modal">
+            <div class="card-header">
+                <div class="card-title" id="debtModalTitle">🚨 Редактировать кредитное обязательство</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('debtModal')">✕</button>
+            </div>
+            <form id="debtForm" onsubmit="saveDebt(event)">
+                <div class="form-group">
+                    <label>Наименование (Банк / Карточка / Займ)</label>
+                    <input type="text" id="debtName" required placeholder="Например: Т-Банк Платинум или Ипотека">
+                </div>
+                <div class="form-group">
+                    <label>Тип обязательства</label>
+                    <select id="debtType" onchange="onDebtTypeChange()">
+                        <option value="card" selected>💳 Кредитная карта</option>
+                        <option value="credit">🏦 Потребительский кредит</option>
+                        <option value="auto_mortgage">🚗 Ипотека / Автокредит</option>
+                        <option value="personal">🤝 Долг человеку / Займ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Текущий остаток долга (₽)</label>
+                    <input type="number" step="0.01" id="debtAmount" required min="0" placeholder="50000">
+                </div>
+
+                <!-- Dynamic: Card Limit -->
+                <div class="form-group" id="debtLimitGroup">
+                    <label>Кредитный лимит (₽) (для кредитных карт)</label>
+                    <input type="number" id="debtLimit" value="0" placeholder="100000">
+                </div>
+
+                <div class="form-group">
+                    <label id="debtRateLabel">Процентная ставка (% годовых)</label>
+                    <input type="number" step="0.01" id="debtRate" required min="0" placeholder="25.4">
+                </div>
+                <div class="form-group">
+                    <label id="debtMinPayLabel">Мин. обязательный платеж (₽/мес)</label>
+                    <input type="number" id="debtMin" value="0" placeholder="1500">
+                </div>
+
+                <!-- Dynamic: Grace Period -->
+                <div class="form-group" id="debtGraceGroup">
+                    <label>Срок грейс-периода (напр. 100 дней или 15.10.2026)</label>
+                    <input type="text" id="debtGrace" value="Нет">
+                </div>
+
+                <div class="form-group">
+                    <label>День ежемесячного списания платежа</label>
+                    <input type="text" id="debtDueDate" value="25-е число" placeholder="25-е число">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('debtModal')">Отмена</button>
+                    <button type="submit" class="btn btn-danger">Сохранить обязательство</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div class="modal-overlay" id="goalModal">
+        <div class="modal">
+            <div class="card-header">
+                <div class="card-title">Добавить цель накопления</div>
+                <button class="btn btn-secondary btn-sm" onclick="closeModal('goalModal')">✕</button>
+            </div>
+            <form onsubmit="saveSavingsGoal(event)">
+                <div class="form-group">
+                    <label>Название цели и иконка</label>
+                    <input type="text" id="goalName" required placeholder="Например: 🏖️ Отпуск или 🚗 Автомобиль">
+                </div>
+                <div class="form-group">
+                    <label>Целевая сумма (₽)</label>
+                    <input type="number" id="goalTarget" required min="1000" placeholder="300000">
+                </div>
+                <div class="form-group">
+                    <label>Цвет прогресс-бара</label>
+                    <select id="goalColor">
+                        <option value="blue">🔵 Синий градиент</option>
+                        <option value="purple">🟣 Фиолетовый градиент</option>
+                        <option value="green">🟢 Зеленый градиент</option>
+                        <option value="orange">🟠 Оранжевый градиент</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('goalModal')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Modules -->
+    <script src="js/simulation.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('[Finance OS] Service Worker зарегистрирован:', reg.scope))
+                    .catch(err => console.warn('[Finance OS] Ошибка регистрации SW:', err));
+            });
+        }
+    </script>
+</body>
+</html>
