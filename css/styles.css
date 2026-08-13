@@ -1091,6 +1091,29 @@ input.input-error {
         height: 180px !important;
     }
 
+    /* --- What-If cards: stack vertically in portrait --- */
+    .whatif-grid {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .whatif-card {
+        min-width: 0 !important;
+        width: 100% !important;
+        flex: none !important;
+    }
+
+    /* --- Global overflow containment --- */
+    .card,
+    .month-detail-card,
+    .tab-content,
+    .presets-bar,
+    .income-stats-summary,
+    .chart-analytics-bar {
+        overflow-x: hidden;
+        max-width: 100%;
+    }
+
     /* --- Header --- */
     header {
         flex-direction: column;

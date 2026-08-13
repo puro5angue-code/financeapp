@@ -1556,7 +1556,7 @@ function renderWhatIf(fcf, startingCash, debtsInput) {
         const freedomLabel = sim.freedomMonth || 'Не достигнута';
         const diff = isRef ? '' : `<span style="font-size:10px; color:var(--text-secondary);">(${monthDiff(sim, refSim)} vs текущий)</span>`;
         return `
-            <div style="flex:1; min-width:160px; background:${color}; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
+            <div class="whatif-card" style="flex:1; min-width:min(160px, 100%); background:${color}; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
                 <div style="font-size:13px; font-weight:700; margin-bottom:8px;">${icon} ${label}</div>
                 <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Свобода от долгов:</div>
                 <div style="font-size:14px; font-weight:700; margin-bottom:6px;">${freedomLabel}</div>
@@ -1566,7 +1566,7 @@ function renderWhatIf(fcf, startingCash, debtsInput) {
     };
 
     container.innerHTML = `
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:stretch;">
+        <div class="whatif-grid" style="display:flex; gap:12px; flex-wrap:wrap; align-items:stretch;">
             ${scenarioCard('Текущий план', 'rgba(59,130,246,0.08)', '📌', current, current, true)}
             ${scenarioCard(`+${fmt(extraAmt)} ₽/мес`, 'rgba(34,197,94,0.08)', '🚀', boosted, current, false)}
             ${scenarioCard('Только минималки', 'rgba(239,68,68,0.08)', '🐢', minOnly, current, false)}
